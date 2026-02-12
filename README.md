@@ -48,3 +48,13 @@ App is available at `http://localhost:3000`.
 npm run build
 npm run preview -- --host 0.0.0.0 --port 3000
 ```
+
+## Quality checks
+
+```bash
+# TypeScript checks via Nuxt
+npm run typecheck
+
+# Full quality gate used before release
+npm run check
+```

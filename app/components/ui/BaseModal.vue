@@ -4,7 +4,12 @@
       <div ref="modalRef" class="modal" role="dialog" aria-modal="true" :aria-label="title" tabindex="-1">
         <div class="head">
           <div class="title">{{ title }}</div>
-          <button class="close" type="button" aria-label="Close" @click="emit('close')">×</button>
+          <button class="close" type="button" aria-label="Close" @click="emit('close')">
+            <svg class="close__icon" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M4 4 L12 12" />
+              <path d="M12 4 L4 12" />
+            </svg>
+          </button>
         </div>
 
         <div class="body">
@@ -32,6 +37,32 @@ const emit = defineEmits<{
 const modalRef = ref<HTMLElement | null>(null)
 const lastFocused = ref<HTMLElement | null>(null)
 
+type BodyScrollLockState = {
+  count: number
+  previousOverflow: string
+  previousPaddingRight: string
+}
+
+const BODY_SCROLL_LOCK_KEY = '__baseModalBodyScrollLock__'
+
+const getBodyScrollLockState = (): BodyScrollLockState | null => {
+  if (typeof window === 'undefined') return null
+
+  const windowWithState = window as Window & {
+    [BODY_SCROLL_LOCK_KEY]?: BodyScrollLockState
+  }
+
+  if (!windowWithState[BODY_SCROLL_LOCK_KEY]) {
+    windowWithState[BODY_SCROLL_LOCK_KEY] = {
+      count: 0,
+      previousOverflow: '',
+      previousPaddingRight: ''
+    }
+  }
+
+  return windowWithState[BODY_SCROLL_LOCK_KEY] ?? null
+}
+
 const getFocusableElements = () => {
   if (!modalRef.value) return []
 
@@ -44,12 +75,42 @@ const getFocusableElements = () => {
 
 const focusFirst = () => {
   const focusable = getFocusableElements()
-  if (focusable.length > 0) {
-    focusable[0].focus()
+  const firstFocusable = focusable.at(0)
+  if (firstFocusable) {
+    firstFocusable.focus()
     return
   }
 
   modalRef.value?.focus()
+}
+
+const lockBodyScroll = () => {
+  const state = getBodyScrollLockState()
+  if (!state) return
+
+  if (state.count === 0) {
+    state.previousOverflow = document.body.style.overflow
+    state.previousPaddingRight = document.body.style.paddingRight
+
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
+    document.body.style.overflow = 'hidden'
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`
+    }
+  }
+
+  state.count += 1
+}
+
+const unlockBodyScroll = () => {
+  const state = getBodyScrollLockState()
+  if (!state || state.count === 0) return
+
+  state.count -= 1
+  if (state.count > 0) return
+
+  document.body.style.overflow = state.previousOverflow
+  document.body.style.paddingRight = state.previousPaddingRight
 }
 
 watch(
@@ -57,12 +118,15 @@ watch(
   (open) => {
     if (open) {
       lastFocused.value = document.activeElement instanceof HTMLElement ? document.activeElement : null
+      lockBodyScroll()
       nextTick(() => focusFirst())
       return
     }
 
+    unlockBodyScroll()
     nextTick(() => lastFocused.value?.focus())
-  }
+  },
+  { immediate: true }
 )
 
 const onKeydown = (e: KeyboardEvent) => {
@@ -81,8 +145,12 @@ const onKeydown = (e: KeyboardEvent) => {
     return
   }
 
-  const first = focusable[0]
-  const last = focusable[focusable.length - 1]
+  const first = focusable.at(0)
+  const last = focusable.at(-1)
+  if (!first || !last) {
+    e.preventDefault()
+    return
+  }
   const active = document.activeElement
 
   if (e.shiftKey && active === first) {
@@ -98,7 +166,10 @@ const onKeydown = (e: KeyboardEvent) => {
 }
 
 onMounted(() => window.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeydown)
+  if (props.open) unlockBodyScroll()
+})
 </script>
 
 <style scoped lang="scss">
@@ -154,13 +225,26 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 .close {
   width: 32px;
   height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 8px;
   border: 1px solid #d4ddf5;
   background: #f7f9ff;
   color: #2a3b78;
-  font-size: 18px;
-  line-height: 1;
   cursor: pointer;
+}
+
+.close__icon {
+  width: 14px;
+  height: 14px;
+}
+
+.close__icon path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
 }
 
 .close:hover {

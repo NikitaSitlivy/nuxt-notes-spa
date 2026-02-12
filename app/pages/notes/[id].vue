@@ -992,7 +992,7 @@ watch(
     grid-area: check;
   }
 
-  .todoTextInput {
+  .todoTextArea {
     grid-area: input;
   }
 

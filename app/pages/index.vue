@@ -38,24 +38,50 @@
           </div>
         </div>
 
-        <TransitionGroup name="previewList" tag="ul" class="preview">
+        <ul class="preview">
           <li v-for="t in previewTodos(n)" :key="t.id" class="preview__item">
             <span class="marker" :class="{ 'marker--done': t.done }">{{ t.done ? 'Готово' : 'В работе' }}</span>
             <span class="text" :class="{ 'text--done': t.done }">{{ t.text || 'Пустой пункт' }}</span>
           </li>
           <li v-if="n.todos.length > 4" key="toggle" class="preview__more">
-            <button class="preview__moreBtn" type="button" @click="togglePreview(n.id)">
-              {{
-                isPreviewExpanded(n.id)
-                  ? 'Свернуть список'
-                  : `+ ещё ${remainingTodos(n)} ${pluralizeTodos(remainingTodos(n))}`
-              }}
+            <button class="preview__moreBtn" type="button" @click="openTodosModal(n.id)">
+              {{ `+ ещё ${remainingTodos(n)} ${pluralizeTodos(remainingTodos(n))}` }}
             </button>
           </li>
           <li v-if="n.todos.length === 0" class="preview__item preview__item--muted">Нет задач</li>
-        </TransitionGroup>
+        </ul>
       </article>
     </section>
+
+    <BaseModal :open="todosOpen" :title="todosModalTitle" @close="closeTodosModal">
+      <div v-if="selectedNote" class="todosModal">
+        <p class="todosModal__meta">
+          Выполнено: {{ doneCount(selectedNote.todos) }} из {{ selectedNote.todos.length }}
+        </p>
+        <ul v-if="selectedNote.todos.length > 0" class="todosModal__list">
+          <li v-for="t in sortedTodos(selectedNote.todos)" :key="t.id" class="todosModal__item">
+            <span class="marker" :class="{ 'marker--done': t.done }">{{ t.done ? 'Готово' : 'В работе' }}</span>
+            <span class="todosModal__text" :class="{ 'todosModal__text--done': t.done }">
+              {{ t.text || 'Пустой пункт' }}
+            </span>
+          </li>
+        </ul>
+        <p v-else class="todosModal__empty">В этой заметке пока нет задач.</p>
+      </div>
+      <template #actions>
+        <NuxtLink
+          v-if="selectedNote"
+          class="action"
+          :to="`/notes/${selectedNote.id}`"
+          @click="closeTodosModal"
+        >
+          Изменить
+        </NuxtLink>
+        <button v-if="selectedNote" class="action action--danger" type="button" @click="askDelete(selectedNote.id)">
+          Удалить
+        </button>
+      </template>
+    </BaseModal>
 
     <BaseModal :open="deleteOpen" title="Удалить заметку?" @close="deleteOpen = false">
       <div>Действие необратимо. Заметка будет удалена.</div>
@@ -75,18 +101,17 @@ const notes = computed(() => store.notes)
 
 const deleteOpen = ref(false)
 const deleteId = ref<string | null>(null)
-const expandedPreviews = ref<Record<string, boolean>>({})
+const todosOpen = ref(false)
+const todosNoteId = ref<string | null>(null)
 
-const isPreviewExpanded = (noteId: string) => !!expandedPreviews.value[noteId]
-const togglePreview = (noteId: string) => {
-  expandedPreviews.value[noteId] = !isPreviewExpanded(noteId)
-}
+const selectedNote = computed(() => notes.value.find((n) => n.id === todosNoteId.value) ?? null)
+const todosModalTitle = computed(() => {
+  if (!selectedNote.value) return 'Все задачи'
+  return `Все задачи: ${selectedNote.value.title || 'Без названия'}`
+})
 
 const sortedTodos = (todos: Todo[]) => [...todos].sort((a, b) => Number(a.done) - Number(b.done))
-const previewTodos = (note: Note) => {
-  const sorted = sortedTodos(note.todos)
-  return isPreviewExpanded(note.id) ? sorted : sorted.slice(0, 4)
-}
+const previewTodos = (note: Note) => sortedTodos(note.todos).slice(0, 4)
 const doneCount = (todos: Todo[]) => todos.filter((t) => t.done).length
 const remainingTodos = (note: Note) => Math.max(0, note.todos.length - 4)
 const pluralizeTodos = (count: number) => {
@@ -101,9 +126,20 @@ const donePercent = (todos: Todo[]) => {
   return Math.round((doneCount(todos) / todos.length) * 100)
 }
 
+const openTodosModal = (noteId: string) => {
+  todosNoteId.value = noteId
+  todosOpen.value = true
+}
+
+const closeTodosModal = () => {
+  todosOpen.value = false
+  todosNoteId.value = null
+}
+
 const onCreate = () => navigateTo('/notes/new')
 
 const askDelete = (id: string) => {
+  closeTodosModal()
   deleteId.value = id
   deleteOpen.value = true
 }
@@ -366,6 +402,54 @@ const confirmDelete = () => {
   box-shadow: 0 0 0 3px rgba(52, 85, 245, 0.18);
 }
 
+.todosModal {
+  display: grid;
+  gap: 12px;
+}
+
+.todosModal__meta {
+  margin: 0;
+  color: #556187;
+  font-size: 14px;
+}
+
+.todosModal__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+  max-height: min(52vh, 420px);
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.todosModal__item {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  min-width: 0;
+  border: 1px solid #e4eafc;
+  border-radius: 12px;
+  background: #f9fbff;
+  padding: 8px;
+}
+
+.todosModal__text {
+  line-height: 1.4;
+  font-size: 14px;
+  word-break: break-word;
+}
+
+.todosModal__text--done {
+  color: #6a759a;
+}
+
+.todosModal__empty {
+  margin: 0;
+  color: #687498;
+}
+
 .marker {
   display: inline-flex;
   align-items: center;
@@ -400,17 +484,6 @@ const confirmDelete = () => {
 
 .text--done {
   color: #6a759a;
-}
-
-.previewList-enter-active,
-.previewList-leave-active {
-  transition: all 0.2s ease;
-}
-
-.previewList-enter-from,
-.previewList-leave-to {
-  opacity: 0;
-  transform: translateY(4px);
 }
 
 @media (max-width: 700px) {
