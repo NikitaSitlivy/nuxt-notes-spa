@@ -1,12 +1,14 @@
 ﻿<template>
   <div class="page">
-    <header class="top">
-      <div>
-        <h1 class="title">Заметки</h1>
-        <p class="subtitle">Список заметок с превью задач.</p>
-      </div>
-      <BaseButton class="createBtn" @click="onCreate">Новая заметка</BaseButton>
-    </header>
+    <div class="hero">
+      <header class="top">
+        <div class="top__copy">
+          <h1 class="title">Заметки</h1>
+          <p class="subtitle">Список заметок с превью задач.</p>
+        </div>
+        <BaseButton class="createBtn" @click="onCreate">Новая заметка</BaseButton>
+      </header>
+    </div>
 
     <section v-if="notes.length === 0" class="empty">
       <h2 class="empty__title">Пока нет заметок</h2>
@@ -15,7 +17,12 @@
     </section>
 
     <section v-else class="grid">
-      <article v-for="n in notes" :key="n.id" class="card">
+      <article
+        v-for="(n, idx) in notes"
+        :key="n.id"
+        class="card"
+        :style="{ '--card-delay': `${Math.min(idx, 11) * 24}ms` }"
+      >
         <div class="card__head">
           <div>
             <h2 class="card__title">{{ n.title || 'Без названия' }}</h2>
@@ -35,6 +42,9 @@
           <li v-for="t in previewTodos(n.todos)" :key="t.id" class="preview__item">
             <span class="marker" :class="{ 'marker--done': t.done }">{{ t.done ? 'Готово' : 'Todo' }}</span>
             <span class="text" :class="{ 'text--done': t.done }">{{ t.text || 'Пустой пункт' }}</span>
+          </li>
+          <li v-if="remainingTodos(n.todos) > 0" class="preview__more">
+            + ещё {{ remainingTodos(n.todos) }} {{ pluralizeTodos(remainingTodos(n.todos)) }}
           </li>
           <li v-if="n.todos.length === 0" class="preview__item preview__item--muted">Нет задач</li>
         </ul>
@@ -60,8 +70,19 @@ const notes = computed(() => store.notes)
 const deleteOpen = ref(false)
 const deleteId = ref<string | null>(null)
 
-const previewTodos = (todos: Todo[]) => todos.slice(0, 4)
+const previewTodos = (todos: Todo[]) => {
+  const sorted = [...todos].sort((a, b) => Number(a.done) - Number(b.done))
+  return sorted.slice(0, 4)
+}
 const doneCount = (todos: Todo[]) => todos.filter((t) => t.done).length
+const remainingTodos = (todos: Todo[]) => Math.max(0, todos.length - 4)
+const pluralizeTodos = (count: number) => {
+  const mod10 = count % 10
+  const mod100 = count % 100
+  if (mod10 === 1 && mod100 !== 11) return 'пункт'
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'пункта'
+  return 'пунктов'
+}
 const donePercent = (todos: Todo[]) => {
   if (todos.length === 0) return 0
   return Math.round((doneCount(todos) / todos.length) * 100)
@@ -86,47 +107,75 @@ const confirmDelete = () => {
 .page {
   max-width: 1120px;
   margin: 0 auto;
-  padding: 28px 16px 40px;
+  padding: 30px 20px 38px;
+}
+
+.hero {
+  padding: 18px 20px;
+  border-radius: 24px;
+  border: 1px solid #d9e4fb;
+  background:
+    radial-gradient(520px 120px at -20% 10%, rgba(71, 103, 241, 0.24), transparent),
+    radial-gradient(420px 100px at 120% 30%, rgba(89, 196, 255, 0.2), transparent),
+    linear-gradient(180deg, rgba(245, 249, 255, 0.9), rgba(236, 242, 255, 0.86));
 }
 
 .top {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: nowrap;
+  margin-bottom: 8px;
+}
+
+.top__copy {
+  min-width: 0;
+  animation: rise-in 0.45s ease both;
+}
+
+.createBtn {
+  flex: 0 0 auto;
+  min-width: 156px;
+  animation: rise-in 0.45s ease both;
+  animation-delay: 0.08s;
 }
 
 .title {
   margin: 0;
-  font-size: clamp(26px, 5vw, 36px);
+  font-size: clamp(28px, 4.2vw, 40px);
+  line-height: 1.02;
   letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
 .subtitle {
   margin: 8px 0 0;
-  color: #5c6788;
+  color: #4d5f92;
+  font-size: clamp(15px, 2vw, 20px);
 }
 
 .empty {
-  margin-top: 18px;
-  background: var(--surface);
-  border: 1px dashed var(--border);
-  border-radius: 18px;
-  padding: 24px;
+  margin-top: 26px;
+  background: linear-gradient(180deg, #ffffff, #f9fbff);
+  border: 1px solid #dce5fb;
+  border-radius: 22px;
+  padding: 26px;
   display: grid;
-  gap: 12px;
+  gap: 14px;
   max-width: 480px;
+  box-shadow: 0 18px 38px rgba(19, 39, 90, 0.09);
+  animation: rise-in 0.55s ease both;
 }
 
 .empty__title {
   margin: 0;
-  font-size: 22px;
+  font-size: 24px;
 }
 
 .empty__text {
   margin: 0;
-  color: #5f6a8b;
+  color: #566089;
 }
 
 .grid {
@@ -149,11 +198,24 @@ const confirmDelete = () => {
 }
 
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: linear-gradient(180deg, #ffffff, #f8fbff);
+  border: 1px solid #d4dff8;
   border-radius: 18px;
   padding: 14px;
-  box-shadow: 0 8px 24px rgba(24, 37, 71, 0.06);
+  box-shadow: 0 10px 30px rgba(24, 37, 71, 0.07);
+  transform: translateY(0);
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    border-color 0.22s ease;
+  animation: rise-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--card-delay, 0ms);
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  border-color: #b7c9f9;
+  box-shadow: 0 16px 34px rgba(30, 50, 105, 0.14);
 }
 
 .card__head {
@@ -165,22 +227,22 @@ const confirmDelete = () => {
 
 .card__title {
   margin: 0;
-  font-size: 18px;
+  font-size: 17px;
   line-height: 1.25;
   word-break: break-word;
 }
 
 .card__meta {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   font-size: 13px;
-  color: #58648a;
+  color: #556187;
 }
 
 .progress {
-  margin-top: 8px;
+  margin-top: 10px;
   width: 100%;
-  height: 6px;
-  background: #e6ebfb;
+  height: 7px;
+  background: #e5ebff;
   border-radius: 999px;
   overflow: hidden;
 }
@@ -194,26 +256,37 @@ const confirmDelete = () => {
 
 .card__actions {
   display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .action {
-  border: 1px solid #d2dbf4;
-  border-radius: 10px;
-  background: #f7f9ff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ccd8f5;
+  border-radius: 11px;
+  background: #f5f8ff;
   color: #213772;
   text-decoration: none;
   cursor: pointer;
-  padding: 4px 8px;
-  min-height: 30px;
+  padding: 7px 12px;
+  min-height: 34px;
   font: inherit;
-  font-size: 13px;
-  line-height: 1.2;
+  font-size: 14px;
+  line-height: 1;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    transform 0.14s ease;
 }
 
 .action:hover {
-  background: #eef3ff;
+  background: #eaf1ff;
+  border-color: #b8c8f5;
+  transform: translateY(-1px);
 }
 
 .action:focus-visible,
@@ -223,9 +296,15 @@ const confirmDelete = () => {
 }
 
 .action--danger {
-  color: #a92a2a;
-  border-color: #f0c9c9;
-  background: #fff7f7;
+  color: #a33333;
+  border-color: #efcccc;
+  background: #fff6f6;
+}
+
+.action--danger:hover {
+  background: #fff0f0;
+  border-color: #e8b7b7;
+  color: #952525;
 }
 
 .preview {
@@ -233,7 +312,7 @@ const confirmDelete = () => {
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .preview__item {
@@ -247,13 +326,20 @@ const confirmDelete = () => {
   color: #687498;
 }
 
+.preview__more {
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2f448b;
+}
+
 .marker {
   border-radius: 999px;
-  border: 1px solid #d8e0f7;
+  border: 1px solid #d7dff8;
   background: #f5f8ff;
   color: #3e4f86;
-  padding: 2px 7px;
-  font-size: 12px;
+  padding: 3px 8px;
+  font-size: 13px;
   flex: 0 0 auto;
 }
 
@@ -265,8 +351,12 @@ const confirmDelete = () => {
 
 .text {
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  font-size: 14px;
 }
 
 .text--done {
@@ -275,12 +365,23 @@ const confirmDelete = () => {
 }
 
 @media (max-width: 700px) {
+  .page {
+    padding: 20px 14px 28px;
+  }
+
+  .hero {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
   .top {
     align-items: stretch;
+    flex-wrap: wrap;
   }
 
   .createBtn {
     width: 100%;
+    min-width: 0;
   }
 }
 
@@ -296,6 +397,18 @@ const confirmDelete = () => {
 
   .card__actions {
     width: 100%;
+    align-items: stretch;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 </style>
