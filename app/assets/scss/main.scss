@@ -1,0 +1,33 @@
+﻿:root {
+  --bg-start: #eef2ff;
+  --bg-end: #f9fbff;
+  --text-main: #151e36;
+  --text-muted: #677194;
+  --surface: #ffffff;
+  --surface-soft: #f5f8ff;
+  --border: #d9e1f4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#__nuxt {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--text-main);
+  font-family: Manrope, "Segoe UI", "Trebuchet MS", sans-serif;
+  background:
+    radial-gradient(1200px 500px at -10% -20%, rgba(71, 121, 255, 0.18), transparent),
+    radial-gradient(900px 500px at 120% 0%, rgba(92, 185, 255, 0.15), transparent),
+    linear-gradient(170deg, var(--bg-start), var(--bg-end));
+}
+
+a {
+  color: inherit;
+}

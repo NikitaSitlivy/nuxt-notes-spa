@@ -1,75 +1,50 @@
-# Nuxt Minimal Starter
+﻿# Nuxt Notes SPA
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+Single-page application for notes with todo lists, built with Nuxt 4 + Pinia + Composition API.
 
-## Setup
+## Implemented requirements
 
-Make sure to install dependencies:
+- 2 pages:
+  - `/` list of notes with compact readonly todos preview
+  - `/notes/[id]` create/edit note with full todo editing
+- Actions on notes:
+  - create
+  - edit
+  - delete with modal confirmation
+  - cancel editing with modal confirmation
+- Actions on todo items:
+  - add
+  - delete
+  - edit text
+  - mark as done
+- Undo/redo in editor:
+  - buttons
+  - keyboard shortcuts `Ctrl+Z` and `Ctrl+Shift+Z` (or `Cmd+Z` / `Cmd+Shift+Z`)
+- State persistence after reload via localStorage + Pinia store hydration
+- Reusable UI components (`BaseButton`, `BaseInput`, `BaseCheckbox`, `BaseModal`)
+- Responsive layout and SCSS styling
+- No browser alerts, confirmations only through modal windows
+
+## Local run
 
 ```bash
-# npm
 npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
-```
-
-## Development Server
-
-Start the development server on `http://localhost:3000`:
-
-```bash
-# npm
 npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
 ```
 
-## Production
+App is available at `http://localhost:3000`.
 
-Build the application for production:
+## Docker run
 
 ```bash
-# npm
+docker-compose up --build
+```
+
+App is available at `http://localhost:3000`.
+
+## Production preview without Docker
+
+```bash
 npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
+npm run preview -- --host 0.0.0.0 --port 3000
 ```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.

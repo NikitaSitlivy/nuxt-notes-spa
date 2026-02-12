@@ -1,0 +1,9 @@
+﻿services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nuxt-notes-spa
+    ports:
+      - "3000:3000"
+    restart: unless-stopped

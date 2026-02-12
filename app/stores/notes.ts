@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { Note } from '~/utils/types'
+import type { Note, Todo } from '~/utils/types'
 import { createId } from '~/utils/id'
 import { deepClone } from '~/utils/clone'
 import { storageGet, storageSet } from '~/utils/storage'
@@ -8,6 +8,12 @@ type NotesState = {
   notes: Note[]
   past: Note[][]
   future: Note[][]
+}
+
+type CreateNotePayload = {
+  title?: string
+  todos?: Todo[]
+  createdAt?: number
 }
 
 const STORAGE_KEY = 'nebus_notes_v1'
@@ -38,7 +44,6 @@ export const useNotesStore = defineStore('notes', {
       this.past.push(deepClone(this.notes))
       if (this.past.length > HISTORY_LIMIT) this.past.shift()
       this.future = []
-      this.persist()
     },
     undo() {
       const prev = this.past.pop()
@@ -54,13 +59,13 @@ export const useNotesStore = defineStore('notes', {
       this.notes = next
       this.persist()
     },
-    createNote() {
+    createNote(payload: CreateNotePayload = {}) {
       const now = Date.now()
       const note: Note = {
         id: createId(),
-        title: '',
-        todos: [],
-        createdAt: now,
+        title: payload.title ?? '',
+        todos: deepClone(payload.todos ?? []),
+        createdAt: payload.createdAt ?? now,
         updatedAt: now
       }
       this.commit()
