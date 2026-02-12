@@ -21,7 +21,10 @@
       <div class="historyPanel">
         <div class="historyPanel__text">
           <div class="historyPanel__title">История изменений</div>
-          <div class="historyPanel__hint">«Отменить» отменяет последнее изменение. «Повторить» возвращает действие, которое вы только что отменили.</div>
+          <div class="historyPanel__hint">
+            <span>«Отменить» - отменяет последнее изменение.</span>
+            <span>«Повторить» - возвращает действие, которое вы только что отменили.</span>
+          </div>
         </div>
         <div class="historyPanel__actions">
           <BaseButton variant="secondary" :disabled="!canUndo" title="Ctrl+Z" @click="undo">Отменить</BaseButton>
@@ -36,11 +39,12 @@
 
       <div class="block">
         <div class="line">
-          <div class="label">Список задач</div>
+          <div class="line__copy">
+            <div class="label">Список задач</div>
+            <div class="todoHint">Чекбокс «Готово» отмечает выполнение пункта.</div>
+          </div>
           <BaseButton variant="secondary" @click="addTodo">Добавить пункт</BaseButton>
         </div>
-
-        <div class="todoHint">Чекбокс «Готово» отмечает выполнение пункта.</div>
 
         <TransitionGroup name="todoList" tag="div" class="todos">
           <div v-for="t in draft.todos" :key="t.id" class="todo">
@@ -117,7 +121,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Note } from '~/utils/types'
+import type { Note, Todo } from '~/utils/types'
 import { createId } from '~/utils/id'
 import { deepClone } from '~/utils/clone'
 import { isEqual } from '~/utils/equal'
@@ -231,9 +235,10 @@ const undo = () => {
   const prev = past.value[past.value.length - 1]
   if (!prev) return
 
-  const removedCount = getRemovedTodosCount(draft.value, prev)
-  if (removedCount > 0) {
-    undoDeleteCount.value = removedCount
+  const removedTodos = getRemovedTodos(draft.value, prev)
+  const shouldAskConfirm = removedTodos.some((todo) => shouldConfirmTodoDelete(todo))
+  if (shouldAskConfirm) {
+    undoDeleteCount.value = removedTodos.length
     undoDeleteOpen.value = true
     return
   }
@@ -257,9 +262,9 @@ const redo = () => {
   resetInputGrouping()
 }
 
-const getRemovedTodosCount = (from: Note, to: Note) => {
+const getRemovedTodos = (from: Note, to: Note) => {
   const toIds = new Set(to.todos.map((t) => t.id))
-  return from.todos.reduce((count, t) => count + Number(!toIds.has(t.id)), 0)
+  return from.todos.filter((t) => !toIds.has(t.id))
 }
 
 const onUndoDeleteClose = () => {
@@ -329,7 +334,36 @@ const addTodo = () => {
   draft.value.todos.push({ id: createId(), text: '', done: false })
 }
 
+const todoExistsInBaseline = (todoId: string) => {
+  if (!baseline.value) return false
+  return baseline.value.todos.some((t) => t.id === todoId)
+}
+
+const shouldConfirmTodoDelete = (todo: Todo) => {
+  if (todoExistsInBaseline(todo.id)) return true
+  if (todo.text.trim().length > 0) return true
+  if (todo.done) return true
+  return false
+}
+
+const removeTodoById = (todoId: string) => {
+  const idx = draft.value.todos.findIndex((t) => t.id === todoId)
+  if (idx === -1) return false
+  resetInputGrouping()
+  recordHistory()
+  draft.value.todos.splice(idx, 1)
+  return true
+}
+
 const askRemoveTodo = (todoId: string) => {
+  const todo = draft.value.todos.find((t) => t.id === todoId)
+  if (!todo) return
+
+  if (!shouldConfirmTodoDelete(todo)) {
+    removeTodoById(todoId)
+    return
+  }
+
   todoDeleteId.value = todoId
   todoDeleteOpen.value = true
 }
@@ -342,14 +376,11 @@ const onTodoDeleteClose = () => {
 const confirmRemoveTodo = () => {
   if (!todoDeleteId.value) return
   const todoId = todoDeleteId.value
-  const idx = draft.value.todos.findIndex((t) => t.id === todoId)
-  if (idx === -1) {
+  const removed = removeTodoById(todoId)
+  if (!removed) {
     onTodoDeleteClose()
     return
   }
-  resetInputGrouping()
-  recordHistory()
-  draft.value.todos.splice(idx, 1)
   onTodoDeleteClose()
 }
 
@@ -529,6 +560,8 @@ watch(
     radial-gradient(500px 100px at -10% 10%, rgba(63, 107, 255, 0.2), transparent),
     radial-gradient(400px 90px at 115% 35%, rgba(62, 196, 250, 0.18), transparent),
     linear-gradient(180deg, rgba(245, 249, 255, 0.9), rgba(236, 242, 255, 0.86));
+  display: flex;
+  align-items: center;
 }
 
 .top {
@@ -537,20 +570,23 @@ watch(
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  margin-bottom: 6px;
+  width: 100%;
+  margin-bottom: 0;
   min-height: 42px;
 }
 
 .back {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   border: 1px solid #ccd8f6;
   border-radius: 11px;
   background: #f5f8ff;
   color: #213772;
-  padding: 7px 11px;
-  font-size: 13px;
+  padding: 9px 14px;
+  min-height: 40px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1;
   cursor: pointer;
@@ -623,7 +659,7 @@ watch(
 .historyPanel {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   padding: 10px;
   border: 1px solid #dbe4fb;
@@ -647,6 +683,8 @@ watch(
   line-height: 1.45;
   color: #5f6b90;
   max-width: 62ch;
+  display: grid;
+  gap: 2px;
 }
 
 .historyPanel__actions {
@@ -654,6 +692,7 @@ watch(
   gap: 8px;
   flex-wrap: nowrap;
   flex: 0 0 auto;
+  align-items: center;
 }
 
 .block + .block {
@@ -687,16 +726,24 @@ watch(
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.line__copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  align-content: center;
 }
 
 .todoHint {
-  margin-top: 2px;
+  margin: 0;
   color: #56618a;
   font-size: 13px;
 }
 
 .todos {
-  margin-top: 10px;
+  margin-top: 0;
   display: grid;
   gap: 10px;
 }
@@ -965,5 +1012,3 @@ watch(
   }
 }
 </style>
-
-

@@ -15,4 +15,4 @@ ENV HOST=0.0.0.0
 ENV PORT=3000
 COPY --from=build /app .
 EXPOSE 3000
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "3000"]
+CMD ["node", ".output/server/index.mjs"]

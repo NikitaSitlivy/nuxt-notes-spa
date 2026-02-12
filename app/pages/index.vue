@@ -38,16 +38,22 @@
           </div>
         </div>
 
-        <ul class="preview">
-          <li v-for="t in previewTodos(n.todos)" :key="t.id" class="preview__item">
-            <span class="marker" :class="{ 'marker--done': t.done }">{{ t.done ? 'Готово' : 'Todo' }}</span>
+        <TransitionGroup name="previewList" tag="ul" class="preview">
+          <li v-for="t in previewTodos(n)" :key="t.id" class="preview__item">
+            <span class="marker" :class="{ 'marker--done': t.done }">{{ t.done ? 'Готово' : 'В работе' }}</span>
             <span class="text" :class="{ 'text--done': t.done }">{{ t.text || 'Пустой пункт' }}</span>
           </li>
-          <li v-if="remainingTodos(n.todos) > 0" class="preview__more">
-            + ещё {{ remainingTodos(n.todos) }} {{ pluralizeTodos(remainingTodos(n.todos)) }}
+          <li v-if="n.todos.length > 4" key="toggle" class="preview__more">
+            <button class="preview__moreBtn" type="button" @click="togglePreview(n.id)">
+              {{
+                isPreviewExpanded(n.id)
+                  ? 'Свернуть список'
+                  : `+ ещё ${remainingTodos(n)} ${pluralizeTodos(remainingTodos(n))}`
+              }}
+            </button>
           </li>
           <li v-if="n.todos.length === 0" class="preview__item preview__item--muted">Нет задач</li>
-        </ul>
+        </TransitionGroup>
       </article>
     </section>
 
@@ -62,20 +68,27 @@
 </template>
 
 <script setup lang="ts">
-import type { Todo } from '~/utils/types'
+import type { Note, Todo } from '~/utils/types'
 
 const store = useNotesStore()
 const notes = computed(() => store.notes)
 
 const deleteOpen = ref(false)
 const deleteId = ref<string | null>(null)
+const expandedPreviews = ref<Record<string, boolean>>({})
 
-const previewTodos = (todos: Todo[]) => {
-  const sorted = [...todos].sort((a, b) => Number(a.done) - Number(b.done))
-  return sorted.slice(0, 4)
+const isPreviewExpanded = (noteId: string) => !!expandedPreviews.value[noteId]
+const togglePreview = (noteId: string) => {
+  expandedPreviews.value[noteId] = !isPreviewExpanded(noteId)
+}
+
+const sortedTodos = (todos: Todo[]) => [...todos].sort((a, b) => Number(a.done) - Number(b.done))
+const previewTodos = (note: Note) => {
+  const sorted = sortedTodos(note.todos)
+  return isPreviewExpanded(note.id) ? sorted : sorted.slice(0, 4)
 }
 const doneCount = (todos: Todo[]) => todos.filter((t) => t.done).length
-const remainingTodos = (todos: Todo[]) => Math.max(0, todos.length - 4)
+const remainingTodos = (note: Note) => Math.max(0, note.todos.length - 4)
 const pluralizeTodos = (count: number) => {
   const mod10 = count % 10
   const mod100 = count % 100
@@ -333,7 +346,31 @@ const confirmDelete = () => {
   color: #2f448b;
 }
 
+.preview__moreBtn {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 8px;
+  transition: color 0.16s ease;
+}
+
+.preview__moreBtn:hover {
+  color: #243a84;
+}
+
+.preview__moreBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(52, 85, 245, 0.18);
+}
+
 .marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
   border-radius: 999px;
   border: 1px solid #d7dff8;
   background: #f5f8ff;
@@ -341,6 +378,8 @@ const confirmDelete = () => {
   padding: 3px 8px;
   font-size: 13px;
   flex: 0 0 auto;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .marker--done {
@@ -360,8 +399,18 @@ const confirmDelete = () => {
 }
 
 .text--done {
-  text-decoration: line-through;
   color: #6a759a;
+}
+
+.previewList-enter-active,
+.previewList-leave-active {
+  transition: all 0.2s ease;
+}
+
+.previewList-enter-from,
+.previewList-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
 }
 
 @media (max-width: 700px) {
