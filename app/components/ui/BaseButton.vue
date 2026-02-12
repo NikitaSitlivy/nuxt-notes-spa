@@ -62,7 +62,8 @@ const onClick = () => {
   transform: translateY(-1px);
 }
 
-.btn:focus-visible {
+.btn:focus-visible,
+.btn:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(66, 85, 255, 0.22);
 }

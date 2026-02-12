@@ -72,7 +72,8 @@ const onChange = (e: Event) => emit('update:modelValue', (e.target as HTMLInputE
   opacity: 1;
 }
 
-.checkbox__native:focus-visible + .checkbox__icon {
+.checkbox__native:focus-visible + .checkbox__icon,
+.checkbox__native:focus + .checkbox__icon {
   box-shadow: 0 0 0 3px rgba(66, 85, 255, 0.22);
 }
 

@@ -53,7 +53,8 @@ const onInput = (e: Event) => emit('update:modelValue', (e.target as HTMLInputEl
   border-color: #b8c3e4;
 }
 
-.input:focus-visible {
+.input:focus-visible,
+.input:focus {
   outline: none;
   border-color: #3c53ee;
   box-shadow: 0 0 0 3px rgba(60, 83, 238, 0.16);

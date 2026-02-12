@@ -1,7 +1,7 @@
 ﻿<template>
   <Teleport to="body">
     <div v-if="open" class="overlay" @click.self="emit('close')">
-      <div class="modal" role="dialog" aria-modal="true" :aria-label="title">
+      <div ref="modalRef" class="modal" role="dialog" aria-modal="true" :aria-label="title" tabindex="-1">
         <div class="head">
           <div class="title">{{ title }}</div>
           <button class="close" type="button" aria-label="Close" @click="emit('close')">×</button>
@@ -29,9 +29,72 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
+const modalRef = ref<HTMLElement | null>(null)
+const lastFocused = ref<HTMLElement | null>(null)
+
+const getFocusableElements = () => {
+  if (!modalRef.value) return []
+
+  return Array.from(
+    modalRef.value.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+  )
+}
+
+const focusFirst = () => {
+  const focusable = getFocusableElements()
+  if (focusable.length > 0) {
+    focusable[0].focus()
+    return
+  }
+
+  modalRef.value?.focus()
+}
+
+watch(
+  () => props.open,
+  (open) => {
+    if (open) {
+      lastFocused.value = document.activeElement instanceof HTMLElement ? document.activeElement : null
+      nextTick(() => focusFirst())
+      return
+    }
+
+    nextTick(() => lastFocused.value?.focus())
+  }
+)
+
 const onKeydown = (e: KeyboardEvent) => {
   if (!props.open) return
-  if (e.key === 'Escape') emit('close')
+
+  if (e.key === 'Escape') {
+    emit('close')
+    return
+  }
+
+  if (e.key !== 'Tab') return
+
+  const focusable = getFocusableElements()
+  if (focusable.length === 0) {
+    e.preventDefault()
+    return
+  }
+
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  const active = document.activeElement
+
+  if (e.shiftKey && active === first) {
+    e.preventDefault()
+    last.focus()
+    return
+  }
+
+  if (!e.shiftKey && active === last) {
+    e.preventDefault()
+    first.focus()
+  }
 }
 
 onMounted(() => window.addEventListener('keydown', onKeydown))
@@ -43,11 +106,18 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   position: fixed;
   inset: 0;
   background: rgba(15, 24, 52, 0.6);
+  -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
   display: grid;
   place-items: center;
   padding: 16px;
   z-index: 200;
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .overlay {
+    background: rgba(15, 24, 52, 0.78);
+  }
 }
 
 .modal {
@@ -57,6 +127,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   background: #fff;
   box-shadow: 0 24px 50px rgba(20, 30, 66, 0.25);
   overflow: hidden;
+}
+
+.modal:focus-visible,
+.modal:focus {
+  outline: none;
+  box-shadow:
+    0 24px 50px rgba(20, 30, 66, 0.25),
+    0 0 0 3px rgba(52, 85, 245, 0.22);
 }
 
 .head {
@@ -89,9 +167,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   background: #edf1ff;
 }
 
+.close:focus-visible,
+.close:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(52, 85, 245, 0.22);
+}
+
 .body {
   padding: 16px;
-  color: #2f3959;
+  color: #273357;
 }
 
 .actions {

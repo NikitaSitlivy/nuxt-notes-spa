@@ -37,6 +37,7 @@
             </BaseCheckbox>
 
             <BaseInput
+              class="todoTextInput"
               :model-value="t.text"
               :class="{ todoInputDone: t.done }"
               @update:modelValue="(v) => setTodoText(t.id, v)"
@@ -52,9 +53,13 @@
         <p v-if="draft.todos.length === 0" class="muted">Пока нет задач.</p>
       </div>
 
-      <footer class="footer">
-        <BaseButton v-if="!isNew && hasUnsaved" variant="secondary" @click="askCancel">Отменить редактирование</BaseButton>
-        <BaseButton :disabled="!hasUnsaved" @click="save">Сохранить изменения</BaseButton>
+      <footer class="footer" :class="{ 'footer--sticky': isReady }">
+        <div class="saveState" :class="{ 'saveState--visible': saveMessageVisible }" aria-live="polite">{{ saveMessage }}</div>
+
+        <div class="footer__actions">
+          <BaseButton v-if="!isNew && hasUnsaved" variant="secondary" @click="askCancel">Отменить редактирование</BaseButton>
+          <BaseButton :disabled="!hasUnsaved" @click="save">Сохранить изменения</BaseButton>
+        </div>
       </footer>
     </section>
 
@@ -83,6 +88,7 @@ import { deepClone } from '~/utils/clone'
 import { isEqual } from '~/utils/equal'
 
 const INPUT_MERGE_MS = 500
+const SAVED_MESSAGE_MS = 1700
 
 const store = useNotesStore()
 const route = useRoute()
@@ -113,6 +119,10 @@ const HISTORY_LIMIT = 150
 const lastInputKey = ref<string | null>(null)
 const lastInputAt = ref(0)
 
+const saveMessage = ref('')
+const saveMessageVisible = ref(false)
+let saveTimer: ReturnType<typeof setTimeout> | null = null
+
 const canUndo = computed(() => past.value.length > 0)
 const canRedo = computed(() => future.value.length > 0)
 
@@ -120,6 +130,23 @@ const hasUnsaved = computed(() => {
   if (!baseline.value) return false
   return !isEqual(draft.value, baseline.value)
 })
+
+watch(hasUnsaved, (value) => {
+  if (value) {
+    saveMessageVisible.value = false
+  }
+})
+
+const showSavedMessage = () => {
+  saveMessage.value = 'Сохранено'
+  saveMessageVisible.value = true
+
+  if (saveTimer) clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => {
+    saveMessageVisible.value = false
+    saveTimer = null
+  }, SAVED_MESSAGE_MS)
+}
 
 const resetInputGrouping = () => {
   lastInputKey.value = null
@@ -165,6 +192,7 @@ const loadDraft = () => {
   past.value = []
   future.value = []
   resetInputGrouping()
+  saveMessageVisible.value = false
 
   if (isNew.value) {
     const now = Date.now()
@@ -241,6 +269,7 @@ const save = () => {
     past.value = []
     future.value = []
     resetInputGrouping()
+    showSavedMessage()
     navigateTo(`/notes/${newId}`)
     return
   }
@@ -256,6 +285,7 @@ const save = () => {
   past.value = []
   future.value = []
   resetInputGrouping()
+  showSavedMessage()
 }
 
 const onCancelModalClose = () => {
@@ -336,14 +366,17 @@ const onKeydown = (e: KeyboardEvent) => {
 }
 
 onMounted(() => window.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeydown)
+  if (saveTimer) clearTimeout(saveTimer)
+})
 </script>
 
 <style scoped lang="scss">
 .page {
   max-width: 960px;
   margin: 0 auto;
-  padding: 24px 16px 40px;
+  padding: 24px 16px 96px;
 }
 
 .top {
@@ -363,6 +396,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   padding: 0;
   font: inherit;
   cursor: pointer;
+}
+
+.back:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(52, 85, 245, 0.22);
+  border-radius: 6px;
 }
 
 .actions {
@@ -388,7 +427,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
 .empty__text {
   margin: 0;
-  color: #6f7a9f;
+  color: #5d688b;
 }
 
 .editor {
@@ -419,7 +458,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 }
 
 .todoHint {
-  color: #6a7598;
+  color: #56618a;
   font-size: 13px;
 }
 
@@ -444,9 +483,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   min-width: 0;
 }
 
+.todoToggle :deep(.checkbox__label) {
+  white-space: nowrap;
+}
+
 .todoInputDone :deep(.input) {
   text-decoration: line-through;
-  color: #7a83a0;
+  color: #6b7494;
 }
 
 .iconBtn {
@@ -465,23 +508,63 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   background: #f2f6ff;
 }
 
+.iconBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(52, 85, 245, 0.22);
+}
+
 .muted {
   margin: 10px 0 0;
-  color: #7782a8;
+  color: #5f6a8d;
 }
 
 .footer {
   margin-top: 20px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.footer__actions {
+  display: inline-flex;
   gap: 10px;
   flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.saveState {
+  color: #256e44;
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.saveState--visible {
+  opacity: 1;
 }
 
 @media (max-width: 680px) {
   .editor {
     padding: 14px;
     border-radius: 16px;
+  }
+
+  .top {
+    align-items: stretch;
+  }
+
+  .actions {
+    width: 100%;
+  }
+
+  .actions :deep(.btn) {
+    flex: 1 1 calc(50% - 8px);
+  }
+
+  .line :deep(.btn) {
+    width: 100%;
   }
 
   .todo {
@@ -491,8 +574,58 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   .iconBtn {
     justify-self: end;
   }
+
+  .footer--sticky {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    padding: 12px 16px 12px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, 0.95);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    border-top: 1px solid #dde4f7;
+    box-shadow: 0 -8px 24px rgba(20, 31, 64, 0.08);
+    z-index: 80;
+  }
+
+  .saveState {
+    order: 2;
+    width: 100%;
+    text-align: right;
+  }
+
+  .footer__actions {
+    width: 100%;
+  }
+
+  .footer__actions :deep(.btn) {
+    flex: 1 1 auto;
+  }
+}
+
+@media (max-width: 900px) and (min-width: 681px) {
+  .todo {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "check delete"
+      "input input";
+  }
+
+  .todoToggle {
+    grid-area: check;
+  }
+
+  .todoTextInput {
+    grid-area: input;
+  }
+
+  .iconBtn {
+    grid-area: delete;
+  }
 }
 </style>
-
 
 
