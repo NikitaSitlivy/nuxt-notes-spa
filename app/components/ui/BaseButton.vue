@@ -43,6 +43,10 @@ const onClick = () => {
 <style scoped lang="scss">
 .btn {
   appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   border: 1px solid transparent;
   border-radius: 12px;
   padding: 10px 14px;

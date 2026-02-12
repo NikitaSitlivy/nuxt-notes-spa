@@ -13,7 +13,6 @@
     <section v-if="notes.length === 0" class="empty">
       <h2 class="empty__title">Пока нет заметок</h2>
       <p class="empty__text">Создай первую заметку, чтобы начать работу.</p>
-      <BaseButton variant="secondary" @click="onCreate">Создать заметку</BaseButton>
     </section>
 
     <section v-else class="grid">
@@ -205,26 +204,38 @@ const confirmDelete = () => {
 }
 
 .empty {
-  margin-top: 26px;
-  background: linear-gradient(180deg, #ffffff, #f9fbff);
-  border: 1px solid #dce5fb;
-  border-radius: 22px;
-  padding: 26px;
+  margin: 30px auto 0;
+  width: min(680px, 100%);
+  background:
+    radial-gradient(420px 120px at 50% -20%, rgba(83, 124, 255, 0.12), transparent),
+    linear-gradient(180deg, #ffffff, #f9fbff);
+  border: 1px solid #d7e1fb;
+  border-radius: 24px;
+  padding: 30px 28px;
   display: grid;
-  gap: 14px;
-  max-width: 480px;
-  box-shadow: 0 18px 38px rgba(19, 39, 90, 0.09);
+  justify-items: center;
+  text-align: center;
+  gap: 16px;
+  box-shadow: 0 20px 44px rgba(19, 39, 90, 0.1);
   animation: rise-in 0.55s ease both;
 }
 
 .empty__title {
   margin: 0;
-  font-size: 24px;
+  font-size: clamp(30px, 4.4vw, 36px);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
 }
 
 .empty__text {
   margin: 0;
   color: #566089;
+  font-size: clamp(16px, 2vw, 22px);
+  max-width: 28ch;
+}
+
+.empty :deep(.btn) {
+  min-width: 240px;
 }
 
 .grid {
@@ -494,6 +505,17 @@ const confirmDelete = () => {
   .hero {
     padding: 14px;
     border-radius: 18px;
+  }
+
+  .empty {
+    margin-top: 24px;
+    padding: 24px 16px;
+    border-radius: 18px;
+  }
+
+  .empty :deep(.btn) {
+    width: 100%;
+    min-width: 0;
   }
 
   .top {

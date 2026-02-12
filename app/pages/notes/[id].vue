@@ -1,11 +1,11 @@
 ﻿<template>
-  <div class="page">
+  <div class="page" :style="{ '--mobile-footer-height': `${mobileFooterHeight}px` }">
     <div class="hero">
       <header class="top">
         <button class="back" type="button" @click="onBack">← К списку заметок</button>
 
         <div class="actions" v-if="isReady">
-          <BaseButton v-if="!isNew" danger @click="askDelete">Удалить</BaseButton>
+          <BaseButton v-if="!isNew" danger class="actions__deleteDesktop" @click="askDelete">Удалить</BaseButton>
           <BaseButton v-else danger class="actions__placeholder" disabled aria-hidden="true" tabindex="-1">Удалить</BaseButton>
         </div>
       </header>
@@ -47,7 +47,7 @@
         </div>
 
         <TransitionGroup name="todoList" tag="div" class="todos">
-          <div v-for="t in draft.todos" :key="t.id" class="todo">
+          <div v-for="t in draft.todos" :key="t.id" class="todo" :data-todo-id="t.id">
             <BaseCheckbox class="todoToggle" :model-value="t.done" @update:modelValue="(v) => setTodoDone(t.id, v)">
               Готово
             </BaseCheckbox>
@@ -71,7 +71,7 @@
         <p v-if="draft.todos.length === 0" class="muted">Пока нет задач.</p>
       </div>
 
-      <footer class="footer" :class="{ 'footer--sticky': isReady }">
+      <footer ref="footerRef" class="footer" :class="{ 'footer--sticky': isReady }">
         <div class="saveState" :class="{ 'saveState--visible': saveMessageVisible }" aria-live="polite">{{ saveMessage }}</div>
 
         <div class="footer__actions">
@@ -80,6 +80,7 @@
             {{ hasUnsaved ? 'Сохранить изменения' : 'Сохранено' }}
           </BaseButton>
         </div>
+        <BaseButton v-if="!isNew" danger class="footer__deleteMobile" @click="askDelete">Удалить</BaseButton>
       </footer>
     </section>
 
@@ -173,6 +174,9 @@ const saveMessage = ref('')
 const saveMessageVisible = ref(false)
 const lastSavedAt = ref('')
 let saveTimer: ReturnType<typeof setTimeout> | null = null
+const footerRef = ref<HTMLElement | null>(null)
+const mobileFooterHeight = ref(0)
+let footerResizeObserver: ResizeObserver | null = null
 
 const canUndo = computed(() => past.value.length > 0)
 const canRedo = computed(() => future.value.length > 0)
@@ -343,10 +347,44 @@ const setTitle = (title: string) => {
   draft.value.title = title
 }
 
+const getStickyFooterHeight = () => {
+  const footer = document.querySelector<HTMLElement>('.footer--sticky')
+  return footer?.offsetHeight ?? 0
+}
+
+const scrollTodoIntoView = (todoId: string) => {
+  const todoEl = document.querySelector<HTMLElement>(`.todo[data-todo-id="${todoId}"]`)
+  if (!todoEl) return
+
+  const footerHeight = getStickyFooterHeight()
+  const bottomSafeLine = window.innerHeight - footerHeight - 12
+  const topSafeLine = 12
+  const rect = todoEl.getBoundingClientRect()
+
+  if (rect.bottom > bottomSafeLine) {
+    window.scrollBy({
+      top: rect.bottom - bottomSafeLine,
+      behavior: 'smooth'
+    })
+  } else if (rect.top < topSafeLine) {
+    window.scrollBy({
+      top: rect.top - topSafeLine,
+      behavior: 'smooth'
+    })
+  }
+}
+
 const addTodo = () => {
+  const hadVerticalScrollbar = document.documentElement.scrollHeight > window.innerHeight + 1
+  const newTodoId = createId()
+
   resetInputGrouping()
   recordHistory()
-  draft.value.todos.push({ id: createId(), text: '', done: false })
+  draft.value.todos.push({ id: newTodoId, text: '', done: false })
+
+  if (!hadVerticalScrollbar) return
+
+  nextTick(() => scrollTodoIntoView(newTodoId))
 }
 
 const todoExistsInBaseline = (todoId: string) => {
@@ -480,6 +518,17 @@ const save = async () => {
   await persistSave()
 }
 
+const updateMobileFooterHeight = () => {
+  if (typeof window === 'undefined') return
+  if (window.innerWidth > 680 || !footerRef.value) {
+    mobileFooterHeight.value = 0
+    return
+  }
+
+  // Small extra breathing room so focused inputs are not glued to the fixed footer edge.
+  mobileFooterHeight.value = footerRef.value.offsetHeight + 8
+}
+
 const onCancelModalClose = () => {
   cancelOpen.value = false
   pendingRoute.value = null
@@ -561,6 +610,24 @@ onMounted(() => window.addEventListener('keydown', onKeydown))
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
   if (saveTimer) clearTimeout(saveTimer)
+  window.removeEventListener('resize', updateMobileFooterHeight)
+  footerResizeObserver?.disconnect()
+  footerResizeObserver = null
+})
+
+onMounted(() => {
+  window.addEventListener('resize', updateMobileFooterHeight)
+  nextTick(() => {
+    updateMobileFooterHeight()
+    if (typeof ResizeObserver === 'undefined' || !footerRef.value) return
+    footerResizeObserver = new ResizeObserver(() => updateMobileFooterHeight())
+    footerResizeObserver.observe(footerRef.value)
+  })
+})
+
+watch([isNew, hasUnsaved, saveMessageVisible], async () => {
+  await nextTick()
+  updateMobileFooterHeight()
 })
 
 watch(
@@ -648,6 +715,10 @@ watch(
 .actions__placeholder {
   visibility: hidden;
   pointer-events: none;
+}
+
+.footer__deleteMobile {
+  display: none;
 }
 
 .empty {
@@ -930,6 +1001,10 @@ watch(
 }
 
 @media (max-width: 680px) {
+  .page {
+    padding: 22px 14px calc(var(--mobile-footer-height, 0px) + env(safe-area-inset-bottom));
+  }
+
   .hero {
     padding: 8px;
     border-radius: 18px;
@@ -938,6 +1013,8 @@ watch(
   .editor {
     padding: 12px;
     border-radius: 16px;
+    animation: none;
+    transform: none;
   }
 
   .historyPanel {
@@ -962,6 +1039,10 @@ watch(
     flex: 1 1 auto;
   }
 
+  .actions__deleteDesktop {
+    display: none;
+  }
+
   .line :deep(.btn) {
     width: 100%;
   }
@@ -971,17 +1052,31 @@ watch(
   }
 
   .todo {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "check delete"
+      "input input";
+    align-items: start;
+  }
+
+  .todoToggle {
+    grid-area: check;
+  }
+
+  .todoTextArea {
+    grid-area: input;
   }
 
   .iconBtn {
+    grid-area: delete;
     justify-self: end;
+    align-self: center;
   }
 
   .footer--sticky {
     position: fixed;
-    left: 0;
-    right: 0;
+    left: 14px;
+    right: 14px;
     bottom: 0;
     margin: 0;
     padding: 12px 16px 12px;
@@ -992,20 +1087,40 @@ watch(
     border-top: 1px solid #dde4f7;
     box-shadow: 0 -8px 24px rgba(20, 31, 64, 0.08);
     z-index: 80;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    align-items: stretch;
+    border-radius: 14px 14px 0 0;
   }
 
   .saveState {
-    order: 2;
+    display: none;
+    margin: 0;
+  }
+
+  .saveState--visible {
+    display: block;
+    order: 1;
     width: 100%;
-    text-align: right;
+    text-align: left;
   }
 
   .footer__actions {
     width: 100%;
+    margin-left: 0;
+    order: 2;
   }
 
   .footer__actions :deep(.btn) {
     flex: 1 1 auto;
+  }
+
+  .footer__deleteMobile {
+    display: inline-flex;
+    width: 100%;
+    order: 3;
+    margin: 0;
   }
 }
 
