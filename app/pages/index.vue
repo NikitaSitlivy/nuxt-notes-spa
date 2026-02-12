@@ -31,10 +31,10 @@
             </div>
           </div>
 
-          <div class="card__actions">
-            <NuxtLink class="action" :to="`/notes/${n.id}`">Изменить</NuxtLink>
-            <button class="action action--danger" type="button" @click="askDelete(n.id)">Удалить</button>
-          </div>
+	          <div class="card__actions">
+	            <button class="action action--danger" type="button" @click="askDelete(n.id)">Удалить</button>
+	            <NuxtLink class="action" :to="`/notes/${n.id}`">Изменить</NuxtLink>
+	          </div>
         </div>
 
         <ul class="preview">
@@ -320,6 +320,10 @@ const confirmDelete = () => {
   align-items: flex-end;
   gap: 8px;
   flex-wrap: nowrap;
+}
+
+.card__actions .action {
+  min-width: 112px;
 }
 
 .action {
