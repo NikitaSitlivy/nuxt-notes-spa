@@ -17,9 +17,6 @@ Test assignment: a notes SPA with todo lists, built with `Nuxt 4`, `Pinia`, and 
   - delete
   - edit text
   - mark as done
-- Undo/redo in editor:
-  - buttons
-  - shortcuts: `Ctrl+Z`, `Ctrl+Shift+Z`, `Ctrl+Y` (`Cmd` on macOS)
 - State persistence after reload (`localStorage` + Pinia hydration)
 - Reusable UI components: `BaseButton`, `BaseInput`, `BaseCheckbox`, `BaseModal`
 - Responsive layout with SCSS
