@@ -160,6 +160,7 @@ const undoDeleteCount = ref(0)
 const pendingRoute = ref<string | null>(null)
 const allowRouteLeaveOnce = ref(false)
 const preserveHistoryOnNextLoad = ref(false)
+const todoRequiresDeleteConfirm = ref<Set<string>>(new Set())
 
 const past = ref<Note[]>([])
 const future = ref<Note[]>([])
@@ -205,6 +206,18 @@ const showSavedMessage = () => {
     saveMessageVisible.value = false
     saveTimer = null
   }, SAVED_MESSAGE_MS)
+}
+
+const markTodoForDeleteConfirm = (todoId: string) => {
+  todoRequiresDeleteConfirm.value.add(todoId)
+}
+
+const initTodoDeleteConfirmState = (todos: Todo[]) => {
+  const next = new Set<string>()
+  for (const todo of todos) {
+    if (todo.text.trim().length > 0 || todo.done) next.add(todo.id)
+  }
+  todoRequiresDeleteConfirm.value = next
 }
 
 const resetInputGrouping = () => {
@@ -312,12 +325,14 @@ const loadDraft = () => {
     }
     draft.value = deepClone(empty)
     baseline.value = deepClone(empty)
+    initTodoDeleteConfirmState(draft.value.todos)
     return
   }
 
   if (!note.value) return
   draft.value = deepClone(note.value)
   baseline.value = deepClone(note.value)
+  initTodoDeleteConfirmState(draft.value.todos)
 }
 
 watch([id, note], loadDraft, { immediate: true })
@@ -341,8 +356,20 @@ const todoExistsInBaseline = (todoId: string) => {
 
 const shouldConfirmTodoDelete = (todo: Todo) => {
   if (todoExistsInBaseline(todo.id)) return true
+  if (todoRequiresDeleteConfirm.value.has(todo.id)) return true
   if (todo.text.trim().length > 0) return true
   if (todo.done) return true
+  if (hasMeaningfulTodoHistory(todo.id)) return true
+  return false
+}
+
+const hasMeaningfulTodoHistory = (todoId: string) => {
+  const snapshots = [draft.value, ...past.value, ...future.value]
+  for (const snapshot of snapshots) {
+    const todo = snapshot.todos.find((t) => t.id === todoId)
+    if (!todo) continue
+    if (todo.text.trim().length > 0 || todo.done) return true
+  }
   return false
 }
 
@@ -389,6 +416,7 @@ const setTodoText = (todoId: string, text: string) => {
   if (!todo || todo.text === text) return
   recordInputHistory(`todo-text:${todoId}`)
   todo.text = text
+  if (text.trim().length > 0) markTodoForDeleteConfirm(todoId)
 }
 
 const autoGrowTodoTextarea = (el: HTMLTextAreaElement) => {
@@ -412,6 +440,7 @@ const setTodoDone = (todoId: string, done: boolean) => {
   resetInputGrouping()
   recordHistory()
   todo.done = done
+  if (done) markTodoForDeleteConfirm(todoId)
 }
 
 const persistSave = async () => {

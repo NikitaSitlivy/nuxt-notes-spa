@@ -1,60 +1,63 @@
-﻿# Nuxt Notes SPA
+# Nuxt Notes SPA
 
-Single-page application for notes with todo lists, built with Nuxt 4 + Pinia + Composition API.
+Test assignment: a notes SPA with todo lists, built with `Nuxt 4`, `Pinia`, and `Composition API`.
 
-## Implemented requirements
+## Implemented scope
 
 - 2 pages:
-  - `/` list of notes with compact readonly todos preview
-  - `/notes/[id]` create/edit note with full todo editing
-- Actions on notes:
+  - `/` notes list with compact read-only todo preview
+  - `/notes/[id]` create/edit note page
+- Note actions:
   - create
   - edit
   - delete with modal confirmation
   - cancel editing with modal confirmation
-- Actions on todo items:
+- Todo actions:
   - add
   - delete
   - edit text
   - mark as done
 - Undo/redo in editor:
   - buttons
-  - keyboard shortcuts `Ctrl+Z` and `Ctrl+Shift+Z` (or `Cmd+Z` / `Cmd+Shift+Z`)
-- State persistence after reload via localStorage + Pinia store hydration
-- Reusable UI components (`BaseButton`, `BaseInput`, `BaseCheckbox`, `BaseModal`)
-- Responsive layout and SCSS styling
-- No browser alerts, confirmations only through modal windows
+  - shortcuts: `Ctrl+Z`, `Ctrl+Shift+Z`, `Ctrl+Y` (`Cmd` on macOS)
+- State persistence after reload (`localStorage` + Pinia hydration)
+- Reusable UI components: `BaseButton`, `BaseInput`, `BaseCheckbox`, `BaseModal`
+- Responsive layout with SCSS
+- No browser alerts, confirmations only via modals
 
-## Local run
+## Requirements
+
+- Docker + Docker Compose
+- Optional for local dev without Docker: Node.js 20+
+
+## Run with Docker Compose
+
+First run (or after Dockerfile/dependency changes):
+
+```bash
+docker-compose up --build
+```
+
+Regular run:
+
+```bash
+docker-compose up
+```
+
+App URL: `http://localhost:3000`
+
+## Run locally without Docker (optional)
 
 ```bash
 npm install
 npm run dev
 ```
 
-App is available at `http://localhost:3000`.
-
-## Docker run
-
-```bash
-docker-compose up --build
-```
-
-App is available at `http://localhost:3000`.
-
-## Production preview without Docker
-
-```bash
-npm run build
-npm run preview -- --host 0.0.0.0 --port 3000
-```
-
 ## Quality checks
 
 ```bash
-# TypeScript checks via Nuxt
 npm run typecheck
-
-# Full quality gate used before release
 npm run check
 ```
+
+`npm run check` runs the full gate: typecheck + production build.
