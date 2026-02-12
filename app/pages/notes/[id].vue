@@ -549,16 +549,12 @@ const {
   }
 
   .top {
-    align-items: stretch;
+    align-items: center;
+    justify-content: flex-start;
   }
 
   .actions {
-    width: 100%;
-    min-width: 0;
-  }
-
-  .actions :deep(.btn) {
-    flex: 1 1 auto;
+    display: none;
   }
 
   .actions__deleteDesktop {
